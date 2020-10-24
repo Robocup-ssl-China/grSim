@@ -443,10 +443,36 @@ void Robot::setSpeed(int i,dReal s)
         wheels[i]->speed = s;
 }
 
-void Robot::setSpeed(dReal vx, dReal vy, dReal vw)
+namespace{
+    dReal NormalizeDir(dReal angle) {
+        const double M_2PI = M_PI * 2;
+
+        while( angle > M_PI ) {
+            angle -= M_2PI;
+        }
+
+        while( angle <= -M_PI ) {
+            angle += M_2PI;
+        }
+        return angle;
+    }
+}
+ 
+
+void Robot::setSpeed(dReal vx, dReal vy, dReal vw, bool use_dir)
 {
     // Calculate Motor Speeds
+    static dReal delta_dir;
+    static dReal last_delta_dir;
+    static dReal diff_dir;
     dReal _DEG2RAD = M_PI / 180.0;
+    if(use_dir) {
+        dReal dir = vw;
+        delta_dir = NormalizeDir(dir - getDir()/180.0f*M_PI);
+        diff_dir = NormalizeDir(delta_dir - last_delta_dir);
+        last_delta_dir = delta_dir;
+        vw = 4.5*delta_dir + 4*diff_dir;
+    } 
     dReal motorAlpha[4] = {cfg->robotSettings.Wheel1Angle * _DEG2RAD, cfg->robotSettings.Wheel2Angle * _DEG2RAD, cfg->robotSettings.Wheel3Angle * _DEG2RAD, cfg->robotSettings.Wheel4Angle * _DEG2RAD};
 
     dReal dw1 =  (1.0 / cfg->robotSettings.WheelRadius) * (( (cfg->robotSettings.RobotRadius * vw) - (vx * sin(motorAlpha[0])) + (vy * cos(motorAlpha[0]))) );
@@ -459,6 +485,7 @@ void Robot::setSpeed(dReal vx, dReal vy, dReal vw)
     setSpeed(2 , dw3);
     setSpeed(3 , dw4);
 }
+
 
 dReal Robot::getSpeed(int i)
 {

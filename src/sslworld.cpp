@@ -559,25 +559,10 @@ void SSLWorld::recvActions()
                     int k = packet.commands().robot_commands(i).id();
                     int id = robotIndex(k, team);
                     if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
-                    bool wheels = false;
-                    if (packet.commands().robot_commands(i).has_wheelsspeed())
-                    {
-                        if (packet.commands().robot_commands(i).wheelsspeed()==true)
-                        {
-                            if (packet.commands().robot_commands(i).has_wheel1()) robots[id]->setSpeed(0, packet.commands().robot_commands(i).wheel1());
-                            if (packet.commands().robot_commands(i).has_wheel2()) robots[id]->setSpeed(1, packet.commands().robot_commands(i).wheel2());
-                            if (packet.commands().robot_commands(i).has_wheel3()) robots[id]->setSpeed(2, packet.commands().robot_commands(i).wheel3());
-                            if (packet.commands().robot_commands(i).has_wheel4()) robots[id]->setSpeed(3, packet.commands().robot_commands(i).wheel4());
-                            wheels = true;
-                        }
-                    }
-                    if (!wheels)
-                    {
-                        dReal vx = 0;if (packet.commands().robot_commands(i).has_veltangent()) vx = packet.commands().robot_commands(i).veltangent();
-                        dReal vy = 0;if (packet.commands().robot_commands(i).has_velnormal())  vy = packet.commands().robot_commands(i).velnormal();
-                        dReal vw = 0;if (packet.commands().robot_commands(i).has_velangular()) vw = packet.commands().robot_commands(i).velangular();
-                        robots[id]->setSpeed(vx, vy, vw);
-                    }
+                    dReal vx = 0;if (packet.commands().robot_commands(i).has_veltangent()) vx = packet.commands().robot_commands(i).veltangent();
+                    dReal vy = 0;if (packet.commands().robot_commands(i).has_velnormal())  vy = packet.commands().robot_commands(i).velnormal();
+                    dReal vw = 0;if (packet.commands().robot_commands(i).has_velangular()) vw = packet.commands().robot_commands(i).velangular();
+                    robots[id]->setSpeed(vx, vy, vw, packet.commands().robot_commands(i).wheelsspeed());
                     dReal kickx = 0 , kickz = 0;
                     bool kick = false;
                     if (packet.commands().robot_commands(i).has_kickspeedx())
