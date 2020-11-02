@@ -31,6 +31,11 @@ public:
     virtual void setMass(dReal mass);
     virtual void init();
     virtual void draw();
+    virtual void setDribbled(bool d) {_is_dribbled = d;}
+    virtual bool isDribbled(){ return _is_dribbled; }
+private:
+    bool _is_dribbled;
+
 };
 
 #endif // PBALL_H

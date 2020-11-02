@@ -191,13 +191,17 @@ void Robot::Kicker::holdBall(){
     dReal yy = fabs(-(kx-bx)*vy + (ky-by)*vx);
     if(holdingBall || xx-rob->cfg->BallRadius() < 0) return;
     dBodySetLinearVel(rob->getBall()->body,0,0,0);
-    robot_to_ball = dJointCreateHinge(rob->getWorld()->world,0);
-    dJointAttach (robot_to_ball,box->body,rob->getBall()->body);
-    holdingBall = true;
+    if(!rob->getBall()->isDribbled()){
+        rob->getBall()->setDribbled(true);
+        robot_to_ball = dJointCreateHinge(rob->getWorld()->world,0);
+        dJointAttach (robot_to_ball,box->body,rob->getBall()->body);
+        holdingBall = true;
+    }
 }
 
 void Robot::Kicker::unholdBall(){
     if(holdingBall) {
+        rob->getBall()->setDribbled(false);
         dJointDestroy(robot_to_ball);
         holdingBall = false;
     }
