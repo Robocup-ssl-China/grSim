@@ -471,7 +471,7 @@ void Robot::setSpeed(dReal vx, dReal vy, dReal vw, bool use_dir)
         delta_dir = NormalizeDir(dir - getDir()/180.0f*M_PI);
         diff_dir = NormalizeDir(delta_dir - last_delta_dir);
         last_delta_dir = delta_dir;
-        vw = 4.5*delta_dir + 4*diff_dir;
+        vw = 3*delta_dir + 2.5*diff_dir;
     } 
     dReal motorAlpha[4] = {cfg->robotSettings.Wheel1Angle * _DEG2RAD, cfg->robotSettings.Wheel2Angle * _DEG2RAD, cfg->robotSettings.Wheel3Angle * _DEG2RAD, cfg->robotSettings.Wheel4Angle * _DEG2RAD};
 
