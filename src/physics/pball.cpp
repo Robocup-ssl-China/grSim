@@ -19,7 +19,7 @@ Copyright (C) 2011, Parsian Robotic Center (eew.aut.ac.ir/~parsian/grsim)
 #include "pball.h"
 
 PBall::PBall(dReal x,dReal y,dReal z,dReal radius,dReal mass,dReal red,dReal green,dReal blue)
-        : PObject(x,y,z,red,green,blue,mass)
+        : PObject(x,y,z,red,green,blue,mass),_is_dribbled(false)
 {
     m_radius = radius;    
 }
