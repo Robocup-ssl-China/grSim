@@ -17,6 +17,7 @@ Copyright (C) 2011, Parsian Robotic Center (eew.aut.ac.ir/~parsian/grsim)
 */
 
 #include "robot.h"
+// #include <iostream>
 
 // ang2 = position angle
 // ang  = rotation angle
@@ -448,6 +449,9 @@ void Robot::setSpeed(int i,dReal s)
 }
 
 namespace{
+    static dReal delta_dir[24];
+    static dReal last_delta_dir[24];
+    static dReal diff_dir[24];
     dReal NormalizeDir(dReal angle) {
         const double M_2PI = M_PI * 2;
 
@@ -463,20 +467,22 @@ namespace{
 }
  
 
-void Robot::setSpeed(dReal vx, dReal vy, dReal vw, bool use_dir)
+void Robot::setSpeed(dReal vx, dReal vy, dReal vw, bool use_dir, int id)
 {
     // Calculate Motor Speeds
-    static dReal delta_dir;
-    static dReal last_delta_dir;
-    static dReal diff_dir;
+
     dReal _DEG2RAD = M_PI / 180.0;
     if(use_dir) {
         dReal dir = vw;
-        delta_dir = NormalizeDir(dir - getDir()/180.0f*M_PI);
-        diff_dir = NormalizeDir(delta_dir - last_delta_dir);
-        last_delta_dir = delta_dir;
-        vw = 3*delta_dir + 2.5*diff_dir;
+        delta_dir[id] = NormalizeDir(dir - getDir()/180.0f*M_PI);
+        diff_dir[id] = NormalizeDir(delta_dir[id] - last_delta_dir[id]);
+        last_delta_dir[id] = delta_dir[id];
+        if(abs(delta_dir[id]) < 0.01) delta_dir[id] = 0;
+        vw = 3.5*delta_dir[id] + 1.5*diff_dir[id];
     } 
+    // if(id == 6) 
+    //     // std::cout<<" target angle: "<< vw << "state: " << getDir()/180.0f*M_PI << "vw: " << vw << "delta_dir" << delta_dir << "diff_dir" << diff_dir << std::endl;
+    //     std::cout<< " " << getDir()/180.0f*M_PI << " " << vw << " " << delta_dir << " " << diff_dir << std::endl;
     dReal motorAlpha[4] = {cfg->robotSettings.Wheel1Angle * _DEG2RAD, cfg->robotSettings.Wheel2Angle * _DEG2RAD, cfg->robotSettings.Wheel3Angle * _DEG2RAD, cfg->robotSettings.Wheel4Angle * _DEG2RAD};
 
     dReal dw1 =  (1.0 / cfg->robotSettings.WheelRadius) * (( (cfg->robotSettings.RobotRadius * vw) - (vx * sin(motorAlpha[0])) + (vy * cos(motorAlpha[0]))) );

@@ -562,7 +562,7 @@ void SSLWorld::recvActions()
                     dReal vx = 0;if (packet.commands().robot_commands(i).has_veltangent()) vx = packet.commands().robot_commands(i).veltangent();
                     dReal vy = 0;if (packet.commands().robot_commands(i).has_velnormal())  vy = packet.commands().robot_commands(i).velnormal();
                     dReal vw = 0;if (packet.commands().robot_commands(i).has_velangular()) vw = packet.commands().robot_commands(i).velangular();
-                    robots[id]->setSpeed(vx, vy, vw, packet.commands().robot_commands(i).wheelsspeed());
+                    robots[id]->setSpeed(vx, vy, vw, packet.commands().robot_commands(i).wheelsspeed(), id);
                     dReal kickx = 0 , kickz = 0;
                     bool kick = false;
                     if (packet.commands().robot_commands(i).has_kickspeedx())
