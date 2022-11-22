@@ -529,9 +529,11 @@ void SSLWorld::sendRobotStatus(Robots_Status& robotsPacket, QHostAddress sender,
     if (team == 0)
     {
         blueStatusSocket->writeDatagram(buffer.data(), buffer.size(), sender, cfg->BlueStatusSendPort());
+//        qDebug() << sender << cfg->BlueStatusSendPort();
     }
     else{
         yellowStatusSocket->writeDatagram(buffer.data(), buffer.size(), sender, cfg->YellowStatusSendPort());
+//        qDebug() << sender << cfg->YellowStatusSendPort();
     }
 }
 
@@ -634,19 +636,19 @@ void SSLWorld::recvActions()
         for (int team = 0; team < 2; ++team)
         {
             Robots_Status robotsPacket;
-            bool updateRobotStatus = false;
+            bool updateRobotStatus = true;
             for (int i = 0; i < this->cfg->Robots_Count(); ++i)
             {
                 int id = robotIndex(i, team);
                 bool isInfrared = robots[id]->kicker->isTouchingBall();
                 KickStatus kicking = robots[id]->kicker->isKicking();
-                if (isInfrared != lastInfraredState[team][i] || kicking != lastKickState[team][i])
-                {
-                    updateRobotStatus = true;
+//                if (isInfrared != lastInfraredState[team][i] || kicking != lastKickState[team][i])
+//                {
+//                    updateRobotStatus = true;
                     addRobotStatus(robotsPacket, i, team, isInfrared, kicking);
                     lastInfraredState[team][i] = isInfrared;
                     lastKickState[team][i] = kicking;
-                }
+//                }
             }
             if (updateRobotStatus)
                 sendRobotStatus(robotsPacket, sender, team);
