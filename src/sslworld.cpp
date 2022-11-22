@@ -154,7 +154,7 @@ SSLWorld::SSLWorld(QGLWidget* parent,ConfigWidget* _cfg,RobotsFomation *form1,Ro
     // Bounding walls
     
     const double thick = cfg->Wall_Thickness();
-    const double increment = cfg->Field_Margin() + cfg->Field_Referee_Margin() + thick / 2;
+    const double increment = cfg->Field_Margin() + thick / 2;
     const double pos_x = cfg->Field_Length() / 2.0 + increment;
     const double pos_y = cfg->Field_Width() / 2.0 + increment;
     const double pos_z = 0.0;

@@ -121,10 +121,10 @@ ConfigWidget::ConfigWidget()
     ADD_VALUE(comm_vars,Int,sendGeometryEvery,120,"Send geometry every X frames")
     VarListPtr gauss_vars(new VarList("Gaussian noise"));
         comm_vars->addChild(gauss_vars);
-        ADD_VALUE(gauss_vars,Bool,noise,false,"Noise")
-        ADD_VALUE(gauss_vars,Double,noiseDeviation_x,3,"Deviation for x values")
-        ADD_VALUE(gauss_vars,Double,noiseDeviation_y,3,"Deviation for y values")
-        ADD_VALUE(gauss_vars,Double,noiseDeviation_angle,2,"Deviation for angle values")
+        ADD_VALUE(gauss_vars,Bool,noise,true,"Noise")
+        ADD_VALUE(gauss_vars,Double,noiseDeviation_x,1,"Deviation for x values")
+        ADD_VALUE(gauss_vars,Double,noiseDeviation_y,1,"Deviation for y values")
+        ADD_VALUE(gauss_vars,Double,noiseDeviation_angle,0.5,"Deviation for angle values")
     VarListPtr vanishing_vars(new VarList("Vanishing probability"));
         comm_vars->addChild(vanishing_vars);
         ADD_VALUE(gauss_vars,Bool,vanishing,false,"Vanishing")
