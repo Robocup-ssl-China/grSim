@@ -63,7 +63,10 @@ private:
     char packet[200];
     char *in_buffer;
     bool lastInfraredState[TEAM_COUNT][MAX_ROBOT_COUNT];
-    KickStatus lastKickState[TEAM_COUNT][MAX_ROBOT_COUNT];    
+    KickStatus lastKickState[TEAM_COUNT][MAX_ROBOT_COUNT]; 
+    inline const static int _CAM_NUM = 4; 
+    inline const static double _CAM_CX[_CAM_NUM] = {1,1,-1,-1};
+    inline const static double _CAM_CY[_CAM_NUM] = {1,-1,-1,1};  
 public:    
     dReal customDT;
     bool isGLEnabled;
@@ -78,6 +81,8 @@ public:
     void addFieldArc(SSL_GeometryFieldSize *field, const string &name, float c_x, float c_y, float radius, float a1, float a2, float thickness);
     void sendVisionBuffer();
     bool visibleInCam(int id, double x, double y);
+    bool getCamPos(int id, double& cam_x, double& cam_y, double& cam_h);
+    bool ballBlockedByRobot(int cam_id,double robot_x,double robot_y,double ball_x,double ball_y,double ball_z);
     int  robotIndex(int robot,int team);
     void addRobotStatus(Robots_Status& robotsPacket, int robotID, int team, bool infrared, KickStatus kickStatus);
     void sendRobotStatus(Robots_Status& robotsPacket, QHostAddress sender, int team);

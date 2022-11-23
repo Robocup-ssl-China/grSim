@@ -402,7 +402,7 @@ void SSLWorld::step(dReal dt)
     if (customDT > 0) dt = customDT;
     const auto ratio = m_parent->devicePixelRatio();
     g->initScene(m_parent->width()*ratio,m_parent->height()*ratio,0,0.7,1);
-    int ballCollisionTry = 5;
+    int ballCollisionTry = 4;
     for (int kk=0;kk < ballCollisionTry;kk++) {
         const dReal* ballvel = dBodyGetLinearVel(ball->body);
         dReal ballspeed = ballvel[0]*ballvel[0] + ballvel[1]*ballvel[1] + ballvel[2]*ballvel[2];
@@ -537,6 +537,14 @@ void SSLWorld::sendRobotStatus(Robots_Status& robotsPacket, QHostAddress sender,
     }
 }
 
+dReal limitRange(dReal t,dReal minimum,dReal maximum){
+    if(t < minimum)
+        return minimum;
+    if(t > maximum)
+        return maximum;
+    return t;
+}
+
 void SSLWorld::recvActions()
 {
     QHostAddress sender;
@@ -563,6 +571,11 @@ void SSLWorld::recvActions()
                     if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
                     dReal vx = 0;if (packet.commands().robot_commands(i).has_veltangent()) vx = packet.commands().robot_commands(i).veltangent();
                     dReal vy = 0;if (packet.commands().robot_commands(i).has_velnormal())  vy = packet.commands().robot_commands(i).velnormal();
+                    if(cfg->robot_vel_limit()){
+                        auto lx = cfg->robot_vel_x_limit(),ly = cfg->robot_vel_y_limit();
+                        vx = limitRange(vx,-lx,lx);
+                        vy = limitRange(vy,-ly,ly);
+                    }
                     dReal vw = 0;if (packet.commands().robot_commands(i).has_velangular()) vw = packet.commands().robot_commands(i).velangular();
                     robots[id]->setSpeed(vx, vy, vw, packet.commands().robot_commands(i).wheelsspeed(), id);
                     dReal kickx = 0 , kickz = 0;
@@ -577,6 +590,9 @@ void SSLWorld::recvActions()
                         kick = true;
                         kickz = packet.commands().robot_commands(i).kickspeedz();
                     }
+                    double noise_ratio = randn_notrig(0.0,cfg->kick_speed_noise());
+                    kickx *= 1+noise_ratio;
+                    kickz *= 1+noise_ratio;
                     if (kick && ((kickx>0.0001) || (kickz>0.0001)))
                         robots[id]->kicker->kick(kickx,kickz);
                     int rolling = 0;
@@ -665,23 +681,41 @@ dReal normalizeAngle(dReal a)
 
 bool SSLWorld::visibleInCam(int id, double x, double y)
 {
-    id %= 4;
-    if (id==0)
-    {
-        if (x>-0.2 && y>-0.2) return true;
-    }
-    if (id==1)
-    {
-        if (x>-0.2 && y<0.2) return true;
-    }
-    if (id==2)
-    {
-        if (x<0.2 && y<0.2) return true;
-    }
-    if (id==3)
-    {
-        if (x<0.2 && y>-0.2) return true;
-    }
+    id %= _CAM_NUM;
+    static double cam_margin = 0.2;
+    double x_border = -1*cam_margin * _CAM_CX[id];
+    double y_border = -1*cam_margin * _CAM_CY[id];
+    if ((x_border > 0 && x < x_border || x_border < 0 && x > x_border)
+        && (y_border > 0 && y < y_border || y_border < 0 && y > y_border))
+        return true;
+    return false;
+}
+bool SSLWorld::getCamPos(int id, double& cam_x, double& cam_y, double& cam_h){
+    id %= _CAM_NUM;
+    cam_x = cfg->Field_Length()/4*_CAM_CX[id];
+    cam_y = cfg->Field_Width()/4*_CAM_CY[id];
+    cam_h = cfg->camera_height();
+}
+bool SSLWorld::ballBlockedByRobot(int cam_id,double robot_x,double robot_y,double ball_x,double ball_y,double ball_z){
+    cam_id %= _CAM_NUM;
+    double cam_x,cam_y,cam_h;
+    getCamPos(cam_id,cam_x,cam_y,cam_h);
+    double ball_r = cfg->BallRadius();
+    double robot_r = cfg->robotSettings.RobotRadius;
+    double robot_height = cfg->robotSettings.RobotHeight;
+    // check if a ball is blocked by a cylinder robor in camera view in position cam_x,cam_y,cam_h
+    // robot_x,robot_y,ball_x,ball_y,ball_z are in global coordinate
+    // return true if blocked
+    // check if ball is in camera view
+    if (!visibleInCam(cam_id,ball_x,ball_y)) return false;
+    // check if robot is in camera view
+    if (!visibleInCam(cam_id,robot_x,robot_y)) return false;
+    // check if ball is in robot's top circle
+    if (ball_z > robot_height) return false;
+    double ball_shadow_x = cam_x + (ball_x-cam_x)*(cam_h-robot_height)/(cam_h-ball_z);
+    double ball_shadow_y = cam_y + (ball_y-cam_y)*(cam_h-robot_height)/(cam_h-ball_z);
+    double ball_shadow_robot_dist = sqrt((ball_shadow_x-robot_x)*(ball_shadow_x-robot_x)+(ball_shadow_y-robot_y)*(ball_shadow_y-robot_y));
+    if (ball_shadow_robot_dist < robot_r+ball_r) return true;
     return false;
 }
 
@@ -730,18 +764,40 @@ SSL_WrapperPacket* SSLWorld::generatePacket(int cam_id)
 
     }
     if (cfg->noise()==false) {dev_x = 0;dev_y = 0;dev_a = 0;}
-    if ((cfg->vanishing()==false) || (rand0_1() > cfg->ball_vanishing()))
-    {
-        if (visibleInCam(cam_id, x, y)) {
-            SSL_DetectionBall* vball = packet->mutable_detection()->add_balls();
-            vball->set_x(randn_notrig(x*1000.0f,dev_x));
-            vball->set_y(randn_notrig(y*1000.0f,dev_y));
-            vball->set_z(z*1000.0f);
-            vball->set_pixel_x(x*1000.0f);
-            vball->set_pixel_y(y*1000.0f);
-            vball->set_confidence(0.9 + rand0_1()*0.1);
+    do{
+        if ((cfg->vanishing()==false) || (rand0_1() > cfg->ball_vanishing()))
+        {
+            if (visibleInCam(cam_id, x, y)) {
+                if(cfg->ball_blocked_by_robot()){
+                    bool blocked = false;
+                    dReal robot_x,robot_y;
+                    for(int i = 0; i < cfg->Robots_Count()*2; i++){
+                        robots[i]->getXY(robot_x,robot_y);
+                        bool res = ballBlockedByRobot(cam_id,robot_x,robot_y,x,y,z);
+                        if(res && rand0_1() <= cfg->ball_blocked_probability()){
+                            blocked = true;
+                            break;
+                        }
+                    }
+                    if(blocked) break;
+                }
+                double cam_x,cam_y,cam_z;
+                getCamPos(cam_id, cam_x, cam_y, cam_z);
+                SSL_DetectionBall* vball = packet->mutable_detection()->add_balls();
+                double x_p = x,y_p = y;
+                if(cfg->chip_ball_skewing()){
+                    x_p = (cam_z * x - z * cam_x) / (cam_z - z);
+                    y_p = (cam_z * y - z * cam_y) / (cam_z - z);
+                }
+                vball->set_x(randn_notrig(x_p*1000.0f,dev_x));
+                vball->set_y(randn_notrig(y_p*1000.0f,dev_y));
+                vball->set_z(z*1000.0f);
+                vball->set_pixel_x(x_p*1000.0f);
+                vball->set_pixel_y(y_p*1000.0f);
+                vball->set_confidence(0.9 + rand0_1()*0.1);
+            }
         }
-    }
+    }while(false);
     for(int i = 0; i < cfg->Robots_Count(); i++){
         if ((cfg->vanishing()==false) || (rand0_1() > cfg->blue_team_vanishing()))
         {

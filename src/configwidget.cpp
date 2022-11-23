@@ -131,8 +131,18 @@ ConfigWidget::ConfigWidget()
         ADD_VALUE(vanishing_vars,Double,blue_team_vanishing,0,"Blue team")
         ADD_VALUE(vanishing_vars,Double,yellow_team_vanishing,0,"Yellow team")
         ADD_VALUE(vanishing_vars,Double,ball_vanishing,0,"Ball")
-    world=VarXML::read(world,(QDir::homePath() + QString("/.grsim.xml")).toStdString());
+    VarListPtr sim2real_gap(new VarList("Sim2Real Gap"));
+        comm_vars->addChild(sim2real_gap);
+        ADD_VALUE(sim2real_gap,Bool,chip_ball_skewing,true,"Chip BallPos Skewing");
+        ADD_VALUE(sim2real_gap,Double,camera_height,5.0,"Camera Height");
+        ADD_VALUE(sim2real_gap,Bool,robot_vel_limit,true,"Robot Vel Limit");
+        ADD_VALUE(sim2real_gap,Double,robot_vel_x_limit,5.0,"Robot VelX Limit");
+        ADD_VALUE(sim2real_gap,Double,robot_vel_y_limit,5.0,"Robot VelY Limit");
+        ADD_VALUE(sim2real_gap,Double,kick_speed_noise,0.06,"Robot KickSpeed Noise");
+        ADD_VALUE(sim2real_gap,Bool,ball_blocked_by_robot,true,"Ball Blocked By Robot");
+        ADD_VALUE(sim2real_gap,Double,ball_blocked_probability,0.9,"Ball Blocked Probability(0.0-1.0)");
 
+    world=VarXML::read(world,(QDir::homePath() + QString("/.grsim.xml")).toStdString());
 
     std::string blueteam = v_BlueTeam->getString();
     geo_vars->removeChild(v_BlueTeam);
