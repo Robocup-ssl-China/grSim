@@ -479,7 +479,7 @@ void SSLWorld::step(dReal dt)
                 dReal fk = cfg->BallDribblingForce();
                 if(fk < needforce)
                     robots[k]->kicker->unholdBall();
-                qDebug() << needforce;
+                //qDebug() << needforce;
                 break;
             }
         }
