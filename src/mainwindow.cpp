@@ -194,6 +194,7 @@ MainWindow::MainWindow(QWidget *parent)
     //config related signals
     QObject::connect(configwidget->v_BallRadius.get(), SIGNAL(wasEdited(VarPtr)), this, SLOT(restartSimulator()));
     QObject::connect(configwidget->v_BallMass.get(), SIGNAL(wasEdited(VarPtr)), this, SLOT(changeBallMass()));
+    QObject::connect(configwidget->v_BallDribblingForce.get(), SIGNAL(wasEdited(VarPtr)), this, SLOT(changeBallDribblingForce()));
     QObject::connect(configwidget->v_BallFriction.get(), SIGNAL(wasEdited(VarPtr)), this, SLOT(changeBallGroundSurface()));
     QObject::connect(configwidget->v_BallSlip.get(), SIGNAL(wasEdited(VarPtr)), this, SLOT(changeBallGroundSurface()));
     QObject::connect(configwidget->v_BallBounce.get(), SIGNAL(wasEdited(VarPtr)), this, SLOT(changeBallGroundSurface()));
@@ -392,6 +393,11 @@ void MainWindow::updateRobotLabel()
 void MainWindow::changeBallMass()
 {
     glwidget->ssl->ball->setMass(configwidget->BallMass());
+}
+
+void MainWindow::changeBallDribblingForce()
+{
+    glwidget->ssl->ball->setDribblingForce(configwidget->BallDribblingForce());
 }
 
 

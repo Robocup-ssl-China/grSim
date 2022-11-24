@@ -38,6 +38,11 @@ void PBall::init()
     dSpaceAdd(space,geom);
 }
 
+void PBall::setDribblingForce(dReal force)
+{
+    max_dribble_force = force;
+}
+
 void PBall::setMass(dReal mass)
 {
 

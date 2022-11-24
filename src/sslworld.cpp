@@ -41,6 +41,7 @@ SSLWorld* _w;
 dReal randn_notrig(dReal mu=0.0, dReal sigma=1.0);
 dReal randn_trig(dReal mu=0.0, dReal sigma=1.0);
 dReal rand0_1();
+dReal ballvel_last[3] = {0., 0., 0.};
 
 dReal fric(dReal f)
 {
@@ -458,10 +459,37 @@ void SSLWorld::step(dReal dt)
     if (best_k>=0) robots[best_k]->chassis->setColor(ROBOT_GRAY*2,ROBOT_GRAY*1.5,ROBOT_GRAY*1.5);
     selected = best_k;
     ball->tag = -1;
+    int holding_num = 0;
     for (int k=0;k<cfg->Robots_Count() * 2;k++)
     {
         robots[k]->step();
+        if (robots[k]->kicker->holdingBall) {
+            holding_num += 1;
+        }
         robots[k]->selected = false;
+    }
+    if (holding_num == 1) {
+        for (int k=0;k<cfg->Robots_Count() * 2;k++) {
+            if (robots[k]->kicker->holdingBall) {
+                const dReal* ballvel = dBodyGetLinearVel(ball->body);
+                dReal ballacc[3];
+                for (int i=0;i<3;i++)
+                    ballacc[i] = ballvel[i] - ballvel_last[i]; 
+                dReal needforce = ballacc[0]*ballacc[0] + ballacc[1]*ballacc[1] + ballacc[2]*ballacc[2];
+                dReal fk = cfg->BallDribblingForce();
+                if(fk < needforce)
+                    robots[k]->kicker->unholdBall();
+                qDebug() << needforce;
+                break;
+            }
+        }
+    }
+    else if (holding_num > 1) {
+        for (int k=0;k<cfg->Robots_Count() * 2;k++) {
+            if (robots[k]->kicker->holdingBall) {
+                robots[k]->kicker->unholdBall();
+            }
+        }
     }
     p->draw();
     g->drawSkybox(4 * cfg->Robots_Count() + 6 + 1, //31 for 6 robot
@@ -485,8 +513,10 @@ void SSLWorld::step(dReal dt)
         }
 
     g->finalizeScene();
-
-
+    const dReal* ballvel = dBodyGetLinearVel(ball->body);
+    ballvel_last[0] = ballvel[0];
+    ballvel_last[1] = ballvel[1];
+    ballvel_last[2] = ballvel[2];
     sendVisionBuffer();
     framenum ++;
 }

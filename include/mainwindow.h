@@ -44,7 +44,8 @@ public slots:
 
     void changeRobotCount();
 
-    void changeBallMass();   
+    void changeBallMass();
+    void changeBallDribblingForce();   
     void changeBallGroundSurface();    
     void changeBallDamping();
     void changeGravity();

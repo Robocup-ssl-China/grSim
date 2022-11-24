@@ -73,7 +73,6 @@ public:
         int rolling;
         int kickstate;
         dReal m_kickspeed,m_kicktime;
-        bool holdingBall;
       public:
         Kicker(Robot* robot);
         void step();
@@ -89,6 +88,7 @@ public:
         dJointID robot_to_ball;
         PBox* box;
         Robot* rob;
+        bool holdingBall;
     } *kicker;
 
     Robot(PWorld* world,PBall* ball,ConfigWidget* _cfg,dReal x,dReal y,dReal z,dReal r,dReal g,dReal b,int rob_id,int wheeltexid,int dir);

@@ -29,12 +29,15 @@ public:
     PBall(dReal x,dReal y,dReal z,dReal radius,dReal mass,dReal red,dReal green,dReal blue);
     virtual ~PBall();
     virtual void setMass(dReal mass);
+    virtual void setDribblingForce(dReal force);
     virtual void init();
     virtual void draw();
     virtual void setDribbled(bool d) {_is_dribbled = d;}
     virtual bool isDribbled(){ return _is_dribbled; }
+    virtual dReal dribbleForce() { return max_dribble_force; }
 private:
     bool _is_dribbled;
+    dReal max_dribble_force;
 
 };
 
