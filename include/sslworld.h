@@ -40,7 +40,7 @@ Copyright (C) 2011, Parsian Robotic Center (eew.aut.ac.ir/~parsian/grsim)
 
 #include "config.h"
 
-#include "messages_robocup_ssl_robot_status.pb.h"
+#include "zss_cmd.pb.h"
 
 #define WALL_COUNT 10
 
@@ -84,8 +84,8 @@ public:
     bool getCamPos(int id, double& cam_x, double& cam_y, double& cam_h);
     bool ballBlockedByRobot(int cam_id,double robot_x,double robot_y,double ball_x,double ball_y,double ball_z);
     int  robotIndex(int robot,int team);
-    void addRobotStatus(Robots_Status& robotsPacket, int robotID, int team, bool infrared, KickStatus kickStatus);
-    void sendRobotStatus(Robots_Status& robotsPacket, QHostAddress sender, int team);
+    void addRobotStatus(ZSS::New::Robots_Status& robotsPacket, int robotID, int team, bool infrared, KickStatus kickStatus);
+    void sendRobotStatus(ZSS::New::Robots_Status& robotsPacket, QHostAddress sender, int team);
 
     ConfigWidget* cfg;
     CGraphics* g;

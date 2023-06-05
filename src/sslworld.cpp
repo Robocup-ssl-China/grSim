@@ -521,9 +521,9 @@ void SSLWorld::step(dReal dt)
     framenum ++;
 }
 
-void SSLWorld::addRobotStatus(Robots_Status& robotsPacket, int robotID, int team, bool infrared, KickStatus kickStatus)
+void SSLWorld::addRobotStatus(ZSS::New::Robots_Status& robotsPacket, int robotID, int team, bool infrared, KickStatus kickStatus)
 {
-    Robot_Status* robot_status = robotsPacket.add_robots_status();
+    auto* robot_status = robotsPacket.add_robots_status();
     robot_status->set_robot_id(robotID);
 
     if (infrared)
@@ -551,7 +551,7 @@ void SSLWorld::addRobotStatus(Robots_Status& robotsPacket, int robotID, int team
     }
 }
 
-void SSLWorld::sendRobotStatus(Robots_Status& robotsPacket, QHostAddress sender, int team)
+void SSLWorld::sendRobotStatus(ZSS::New::Robots_Status& robotsPacket, QHostAddress sender, int team)
 {
     int size = robotsPacket.ByteSize();
     QByteArray buffer(size, 0);
@@ -622,6 +622,7 @@ void SSLWorld::recvActions()
                     }
                     dReal kickx = 0 , kickz = 0;
                     bool kick = false;
+
                     if (cmd.kick_mode() == ZSS::New::Robot_Command_KickMode_KICK){
                         kick = true;
                         kickx = cmd.desire_power();
@@ -685,23 +686,24 @@ void SSLWorld::recvActions()
         // send robot status
         for (int team = 0; team < 2; ++team)
         {
-            Robots_Status robotsPacket;
-            bool updateRobotStatus = true;
+            ZSS::New::Robots_Status robotsPacket;
+            bool updateRobotStatus = false;
             for (int i = 0; i < this->cfg->Robots_Count(); ++i)
             {
                 int id = robotIndex(i, team);
                 bool isInfrared = robots[id]->kicker->isTouchingBall();
                 KickStatus kicking = robots[id]->kicker->isKicking();
-//                if (isInfrared != lastInfraredState[team][i] || kicking != lastKickState[team][i])
-//                {
-//                    updateRobotStatus = true;
+                if (isInfrared != lastInfraredState[team][i] || kicking != lastKickState[team][i])
+                {   
+                    updateRobotStatus = true;
                     addRobotStatus(robotsPacket, i, team, isInfrared, kicking);
                     lastInfraredState[team][i] = isInfrared;
                     lastKickState[team][i] = kicking;
-//                }
+                }
             }
-            if (updateRobotStatus)
+            if (updateRobotStatus){
                 sendRobotStatus(robotsPacket, sender, team);
+            }
         }
     }
 }
