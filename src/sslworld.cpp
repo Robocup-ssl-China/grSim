@@ -589,36 +589,49 @@ void SSLWorld::recvActions()
             int team=0;
             if (packet.has_commands())
             {
-                if (packet.commands().has_isteamyellow())
+                if (packet.commands().isteamyellow()) team=1;
+                auto robot_commands = packet.commands().robot_commands();
+                for (int i=0;i<robot_commands.command_size();i++)
                 {
-                    if (packet.commands().isteamyellow()) team=1;
-                }
-                for (int i=0;i<packet.commands().robot_commands_size();i++)
-                {
-                    if (!packet.commands().robot_commands(i).has_id()) continue;
-                    int k = packet.commands().robot_commands(i).id();
+                    auto cmd = robot_commands.command(i);
+                    int k = cmd.robot_id();
                     int id = robotIndex(k, team);
                     if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
-                    dReal vx = 0;if (packet.commands().robot_commands(i).has_veltangent()) vx = packet.commands().robot_commands(i).veltangent();
-                    dReal vy = 0;if (packet.commands().robot_commands(i).has_velnormal())  vy = packet.commands().robot_commands(i).velnormal();
-                    if(cfg->robot_vel_limit()){
-                        auto lx = cfg->robot_vel_x_limit(),ly = cfg->robot_vel_y_limit();
-                        vx = limitRange(vx,-lx,lx);
-                        vy = limitRange(vy,-ly,ly);
+                    dReal vx = 0,vy = 0,vw = 0;
+                    if(cmd.cmd_type() == ZSS::New::Robot_Command_CmdType_CMD_VEL){
+                        vx = cmd.cmd_vel().velocity_x();
+                        vy = cmd.cmd_vel().velocity_y();
+                        vw = cmd.cmd_vel().velocity_r();
+                        if(cmd.cmd_vel().use_imu()){
+                            vw = cmd.cmd_vel().imu_theta();
+                        }
+                        if(cfg->robot_vel_limit()){
+                            auto lx = cfg->robot_vel_x_limit(),ly = cfg->robot_vel_y_limit();
+                            vx = limitRange(vx,-lx,lx);
+                            vy = limitRange(vy,-ly,ly);
+                        }
+                        robots[id]->setSpeed(vx, vy, vw, cmd.cmd_vel().use_imu(), id);
+                    }else if(cmd.cmd_type() == ZSS::New::Robot_Command_CmdType_CMD_WHEEL){
+                        auto ww = cmd.cmd_wheel();
+                        robots[id]->setSpeed(0,ww.wheel1());
+                        robots[id]->setSpeed(1,ww.wheel2());
+                        robots[id]->setSpeed(2,ww.wheel3());
+                        robots[id]->setSpeed(3,ww.wheel4());
+                    }else{
+                        std::cout << "grsim-sslworld.cpp : cmd type currently not supported" << std::endl;
                     }
-                    dReal vw = 0;if (packet.commands().robot_commands(i).has_velangular()) vw = packet.commands().robot_commands(i).velangular();
-                    robots[id]->setSpeed(vx, vy, vw, packet.commands().robot_commands(i).wheelsspeed(), id);
                     dReal kickx = 0 , kickz = 0;
                     bool kick = false;
-                    if (packet.commands().robot_commands(i).has_kickspeedx())
-                    {
+                    if (cmd.kick_mode() == ZSS::New::Robot_Command_KickMode_KICK){
                         kick = true;
-                        kickx = packet.commands().robot_commands(i).kickspeedx();
-                    }
-                    if (packet.commands().robot_commands(i).has_kickspeedz())
-                    {
+                        kickx = cmd.desire_power();
+                        kickz = 0;
+                    }else if(cmd.kick_mode() == ZSS::New::Robot_Command_KickMode_CHIP){
                         kick = true;
-                        kickz = packet.commands().robot_commands(i).kickspeedz();
+                        // suppose kicker is 45 degree
+                        auto vel = std::sqrt(9.8*cmd.desire_power()/2.0);// length = velx * t = velx * (2*velz/g)
+                        kickx = vel;
+                        kickz = vel;
                     }
                     double noise_ratio = randn_notrig(0.0,cfg->kick_speed_noise());
                     kickx *= 1+noise_ratio;
@@ -626,10 +639,7 @@ void SSLWorld::recvActions()
                     if (kick && ((kickx>0.0001) || (kickz>0.0001)))
                         robots[id]->kicker->kick(kickx,kickz);
                     int rolling = 0;
-                    if (packet.commands().robot_commands(i).has_spinner())
-                    {
-                        if (packet.commands().robot_commands(i).spinner()) rolling = 1;
-                    }
+                    if (cmd.dribble_spin() > 0.2) rolling = 1;
                     robots[id]->kicker->setRoller(rolling);
                 }
             }
@@ -637,20 +647,14 @@ void SSLWorld::recvActions()
             {
                 for (int i=0;i<packet.replacement().robots_size();i++)
                 {
-                    int team = 0;
-                    if (packet.replacement().robots(i).has_yellowteam())
-                    {
-                        if (packet.replacement().robots(i).yellowteam())
-                            team = 1;
-                    }
-                    if (!packet.replacement().robots(i).has_id()) continue;
+                    int team = packet.replacement().robots(i).yellowteam() ? 1 : 0;
                     int k = packet.replacement().robots(i).id();
                     dReal x = 0, y = 0, dir = 0;
                     bool turnon = true;
-                    if (packet.replacement().robots(i).has_x()) x = packet.replacement().robots(i).x();
-                    if (packet.replacement().robots(i).has_y()) y = packet.replacement().robots(i).y();
-                    if (packet.replacement().robots(i).has_dir()) dir = packet.replacement().robots(i).dir();
-                    if (packet.replacement().robots(i).has_turnon()) turnon = packet.replacement().robots(i).turnon();
+                    x = packet.replacement().robots(i).x();
+                    y = packet.replacement().robots(i).y();
+                    dir = packet.replacement().robots(i).dir();
+                    turnon = packet.replacement().robots(i).turnon();
                     int id = robotIndex(k, team);
                     if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
                     robots[id]->setXY(x,y);
@@ -666,10 +670,10 @@ void SSLWorld::recvActions()
                     vx = vel_vec[0];
                     vy = vel_vec[1];
 
-                    if (packet.replacement().ball().has_x())  x  = packet.replacement().ball().x();
-                    if (packet.replacement().ball().has_y())  y  = packet.replacement().ball().y();
-                    if (packet.replacement().ball().has_vx()) vx = packet.replacement().ball().vx();
-                    if (packet.replacement().ball().has_vy()) vy = packet.replacement().ball().vy();
+                    x  = packet.replacement().ball().x();
+                    y  = packet.replacement().ball().y();
+                    vx = packet.replacement().ball().vx();
+                    vy = packet.replacement().ball().vy();
 
                     ball->setBodyPosition(x,y,cfg->BallRadius()*1.2);
                     dBodySetLinearVel(ball->body,vx,vy,0);

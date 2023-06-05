@@ -140,21 +140,32 @@ void MainWindow::sendPacket()
     if (cmbTeam->currentText()=="Yellow") yellow = true;
     packet.mutable_commands()->set_isteamyellow(yellow);
     packet.mutable_commands()->set_timestamp(0.0);
-    grSim_Robot_Command* command = packet.mutable_commands()->add_robot_commands();
-    command->set_id(edtId->text().toInt());
-
-    command->set_wheelsspeed(!chkVel->isChecked());
-    command->set_wheel1(edtV1->text().toDouble());
-    command->set_wheel2(edtV2->text().toDouble());
-    command->set_wheel3(edtV3->text().toDouble());
-    command->set_wheel4(edtV4->text().toDouble());
-    command->set_veltangent(edtVx->text().toDouble());
-    command->set_velnormal(edtVy->text().toDouble());
-    command->set_velangular(edtW->text().toDouble());
-
-    command->set_kickspeedx(edtKick->text().toDouble());
-    command->set_kickspeedz(edtChip->text().toDouble());
-    command->set_spinner(chkSpin->isChecked());
+    auto* commands = packet.mutable_commands()->mutable_robot_commands();
+    auto* command = commands->add_command();
+    command->set_robot_id(edtId->text().toInt());
+    if(edtKick->text().toDouble() > 0){
+        command->set_kick_mode(ZSS::New::Robot_Command_KickMode_KICK);
+        command->set_desire_power(edtKick->text().toDouble() > 0);
+    }else if(edtChip->text().toDouble() > 0){
+        command->set_kick_mode(ZSS::New::Robot_Command_KickMode_CHIP);
+        command->set_desire_power(edtChip->text().toDouble() > 0);
+    }else{
+        command->set_kick_mode(ZSS::New::Robot_Command_KickMode_NONE);
+    }
+    command->set_dribble_spin(chkSpin->isChecked()?1:0);
+    if(chkVel->isChecked()){
+        command->set_cmd_type(ZSS::New::Robot_Command_CmdType_CMD_WHEEL);
+        command->mutable_cmd_wheel()->set_wheel1(edtV1->text().toDouble());
+        command->mutable_cmd_wheel()->set_wheel2(edtV2->text().toDouble());
+        command->mutable_cmd_wheel()->set_wheel3(edtV3->text().toDouble());
+        command->mutable_cmd_wheel()->set_wheel4(edtV4->text().toDouble());
+    }else{
+        command->set_cmd_type(ZSS::New::Robot_Command_CmdType_CMD_VEL);
+        command->mutable_cmd_vel()->set_velocity_x(edtVx->text().toDouble());
+        command->mutable_cmd_vel()->set_velocity_y(edtVy->text().toDouble());
+        command->mutable_cmd_vel()->set_velocity_r(edtW->text().toDouble());
+        command->mutable_cmd_vel()->set_use_imu(false);
+    }
 
     QByteArray dgram;
     dgram.resize(packet.ByteSize());
