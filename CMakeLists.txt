@@ -114,7 +114,7 @@ endfunction()
 set(PROTO_META_BASE_DIR ${CMAKE_BINARY_DIR}/proto)
 set(PROTO_FILE_DIR ${CMAKE_SOURCE_DIR}/src/proto)
 file(MAKE_DIRECTORY ${PROTO_META_BASE_DIR})
-list(APPEND PROTO_FLAGS "--experimental_allow_proto3_optional -I${PROTO_FILE_DIR}")
+list(APPEND PROTO_FLAGS --experimental_allow_proto3_optional -I${PROTO_FILE_DIR})
 file(GLOB PROTO_FILES "${PROTO_FILE_DIR}/*.proto")
 
 FOREACH(FIL ${PROTO_FILES})
