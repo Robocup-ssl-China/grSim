@@ -44,6 +44,7 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/include/net)
 include_directories(${PROJECT_SOURCE_DIR}/include/physics)
+include_directories(${PROJECT_BINARY_DIR}/proto)
 
 
 ## Handling depenendcies
@@ -89,7 +90,7 @@ if(NOT VARTYPES_FOUND)
   set(VARTYPES_INCLUDE_DIRS "${VARTYPES_INSTALL_DIR}/include")
   set(VARTYPE_LIB_NAME ${CMAKE_STATIC_LIBRARY_PREFIX}vartypes${CMAKE_STATIC_LIBRARY_SUFFIX})
   set(VARTYPES_LIBRARIES "${VARTYPES_INSTALL_DIR}/lib/${VARTYPE_LIB_NAME}")
-endif()
+endif() 
 
 target_include_directories(${app} PRIVATE ${VARTYPES_INCLUDE_DIRS})
 list(APPEND libs ${VARTYPES_LIBRARIES})
@@ -99,18 +100,56 @@ find_package(Protobuf REQUIRED)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 list(APPEND libs ${PROTOBUF_LIBRARIES})
 
-protobuf_generate_cpp(PROTO_CPP PROTO_H
-    src/proto/messages_robocup_ssl_detection.proto
-    src/proto/messages_robocup_ssl_geometry.proto
-    src/proto/messages_robocup_ssl_wrapper.proto
-    src/proto/messages_robocup_ssl_refbox_log.proto
-    src/proto/messages_robocup_ssl_robot_status.proto
-    src/proto/grSim_Replacement.proto
-    src/proto/grSim_Commands.proto
-    src/proto/grSim_Packet.proto
-    src/proto/zss_cmd_type.proto
-    src/proto/zss_cmd.proto
+
+function(get_pb_file H CPP)
+	list(APPEND PH ${ARGN})
+	list(APPEND PC ${ARGN})
+	list(TRANSFORM PH PREPEND ${CMAKE_BINARY_DIR}/proto/)
+	list(TRANSFORM PH APPEND .pb.h)
+	list(TRANSFORM PC PREPEND ${CMAKE_BINARY_DIR}/proto/)
+	list(TRANSFORM PC APPEND .pb.cc)
+	set(${H} ${PH} PARENT_SCOPE)
+	set(${CPP} ${PC} PARENT_SCOPE)
+endfunction()
+set(PROTO_META_BASE_DIR ${CMAKE_BINARY_DIR}/proto)
+set(PROTO_FILE_DIR ${CMAKE_SOURCE_DIR}/src/proto)
+file(MAKE_DIRECTORY ${PROTO_META_BASE_DIR})
+list(APPEND PROTO_FLAGS "--experimental_allow_proto3_optional -I${PROTO_FILE_DIR}")
+file(GLOB PROTO_FILES "${PROTO_FILE_DIR}/*.proto")
+
+FOREACH(FIL ${PROTO_FILES})
+	GET_FILENAME_COMPONENT(ABS_FIL ${FIL} ABSOLUTE)
+	GET_FILENAME_COMPONENT(FIL_WE ${ABS_FIL} NAME_WE)
+	EXECUTE_PROCESS(
+		COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} ${PROTO_FLAGS} --cpp_out=${PROTO_META_BASE_DIR} ${FIL}
+		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	)
+ENDFOREACH()
+
+get_pb_file(PROTO_H PROTO_CPP 
+    messages_robocup_ssl_detection
+    messages_robocup_ssl_geometry
+    messages_robocup_ssl_wrapper
+    messages_robocup_ssl_refbox_log
+    messages_robocup_ssl_robot_status
+    grSim_Replacement
+    grSim_Commands
+    grSim_Packet
+    zss_cmd_type
+    zss_cmd
 )
+# protobuf_generate_cpp(PROTO_CPP PROTO_H
+#     src/proto/messages_robocup_ssl_detection.proto
+#     src/proto/messages_robocup_ssl_geometry.proto
+#     src/proto/messages_robocup_ssl_wrapper.proto
+#     src/proto/messages_robocup_ssl_refbox_log.proto
+#     src/proto/messages_robocup_ssl_robot_status.proto
+#     src/proto/grSim_Replacement.proto
+#     src/proto/grSim_Commands.proto
+#     src/proto/grSim_Packet.proto
+#     src/proto/zss_cmd_type.proto
+#     src/proto/zss_cmd.proto
+# )
 
 qt5_add_resources(RESOURCES
     resources/textures.qrc
@@ -212,7 +251,7 @@ else()
   install(FILES resources/icons/grsim.svg DESTINATION share/icons/hicolor/scalable/apps)
 endif()
 
-option(BUILD_CLIENTS "Choose this option if you want to build the example Qt client." ON)
+option(BUILD_CLIENTS "Choose this option if you want to build the example Qt client." OFF)
 if(BUILD_CLIENTS)
     add_subdirectory(clients/qt)
 endif()
@@ -250,5 +289,4 @@ else()
     set(CPACK_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME_LOWER}_${CPACK_PACKAGE_VERSION}_${ARCH}")
 endif()
 include(CPack)
-
 
