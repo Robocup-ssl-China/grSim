@@ -5,16 +5,15 @@ package ZSS.New;
 message Robots_Status{
     repeated Robot_Status robots_status = 1;
 }
-
+enum Team{
+    UNKNOWN = 0;
+    BLUE = 1;
+    YELLOW = 2;
+}
 // use to multicast in LAN
 message Multicase_Status{
     string ip = 1;
     string uuid = 2;
-    enum Team{
-        UNKNOWN = 0;
-        BLUE = 1;
-        YELLOW = 2;
-    }
     Team team = 3;
     int32 robot_id = 4;
     // battery voltage
@@ -41,6 +40,7 @@ message Robot_Status {
     Odom odom = 8;
     // wheel encoder value
     repeated float wheel_encoder = 9;
+    Team team = 10;
 }
 message Robots_Command {
     repeated Robot_Command command = 1;
