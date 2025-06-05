@@ -22,6 +22,8 @@ Copyright (C) 2011, Parsian Robotic Center (eew.aut.ac.ir/~parsian/grsim)
 #include <QtNetwork>
 
 #include <QDebug>
+#include <thread>
+#include <chrono>
 
 #include "logger.h"
 
@@ -583,127 +585,127 @@ void SSLWorld::recvActions()
     while (commandSocket->hasPendingDatagrams())
     {
         int size = commandSocket->readDatagram(in_buffer, 65536, &sender, &port);
-        if (size > 0)
+        if (size <= 0){
+            std::cerr << "grsim-sslworld.cpp : recvActions : readDatagram error, size = " << size << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
+        int team=0;
+
+        packet.ParseFromArray(in_buffer, size);
+        if (packet.has_commands())
         {
-            packet.ParseFromArray(in_buffer, size);
-            int team=0;
-            if (packet.has_commands())
+            if (packet.commands().isteamyellow()) team=1;
+            auto robot_commands = packet.commands().robot_commands();
+            for (int i=0;i<robot_commands.command_size();i++)
             {
-                if (packet.commands().isteamyellow()) team=1;
-                auto robot_commands = packet.commands().robot_commands();
-                for (int i=0;i<robot_commands.command_size();i++)
-                {
-                    auto cmd = robot_commands.command(i);
-                    int k = cmd.robot_id();
-                    int id = robotIndex(k, team);
-                    if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
-                    dReal vx = 0,vy = 0,vw = 0;
-                    if(cmd.cmd_type() == ZSS::New::Robot_Command_CmdType_CMD_VEL){
-                        vx = cmd.cmd_vel().velocity_x();
-                        vy = cmd.cmd_vel().velocity_y();
-                        vw = cmd.cmd_vel().velocity_r();
-                        if(cmd.cmd_vel().use_imu()){
-                            vw = cmd.cmd_vel().imu_theta();
-                        }
-                        if(cfg->robot_vel_limit()){
-                            auto lx = cfg->robot_vel_x_limit(),ly = cfg->robot_vel_y_limit();
-                            vx = limitRange(vx,-lx,lx);
-                            vy = limitRange(vy,-ly,ly);
-                        }
-                        robots[id]->setSpeed(vx, vy, vw, cmd.cmd_vel().use_imu(), id);
-                    }else if(cmd.cmd_type() == ZSS::New::Robot_Command_CmdType_CMD_WHEEL){
-                        auto ww = cmd.cmd_wheel();
-                        robots[id]->setSpeed(0,ww.wheel1());
-                        robots[id]->setSpeed(1,ww.wheel2());
-                        robots[id]->setSpeed(2,ww.wheel3());
-                        robots[id]->setSpeed(3,ww.wheel4());
-                    }else{
-                        std::cout << "grsim-sslworld.cpp : cmd type currently not supported" << std::endl;
+                auto cmd = robot_commands.command(i);
+                int k = cmd.robot_id();
+                int id = robotIndex(k, team);
+                if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
+                dReal vx = 0,vy = 0,vw = 0;
+                if(cmd.cmd_type() == ZSS::New::Robot_Command_CmdType_CMD_VEL){
+                    vx = cmd.cmd_vel().velocity_x();
+                    vy = cmd.cmd_vel().velocity_y();
+                    vw = cmd.cmd_vel().velocity_r();
+                    if(cmd.cmd_vel().use_imu()){
+                        vw = cmd.cmd_vel().imu_theta();
                     }
-                    dReal kickx = 0 , kickz = 0;
-                    bool kick = false;
-
-                    if (cmd.kick_mode() == ZSS::New::Robot_Command_KickMode_KICK){
-                        kick = true;
-                        kickx = cmd.desire_power();
-                        kickz = 0;
-                    }else if(cmd.kick_mode() == ZSS::New::Robot_Command_KickMode_CHIP){
-                        kick = true;
-                        // suppose kicker is 45 degree
-                        auto vel = std::sqrt(9.8*cmd.desire_power()/2.0);// length = velx * t = velx * (2*velz/g)
-                        kickx = vel;
-                        kickz = vel;
+                    if(cfg->robot_vel_limit()){
+                        auto lx = cfg->robot_vel_x_limit(),ly = cfg->robot_vel_y_limit();
+                        vx = limitRange(vx,-lx,lx);
+                        vy = limitRange(vy,-ly,ly);
                     }
-                    double noise_ratio = randn_notrig(0.0,cfg->kick_speed_noise());
-                    kickx *= 1+noise_ratio;
-                    kickz *= 1+noise_ratio;
-                    if (kick && ((kickx>0.0001) || (kickz>0.0001)))
-                        robots[id]->kicker->kick(kickx,kickz);
-                    int rolling = 0;
-                    if (cmd.dribble_spin() > 0.2) rolling = 1;
-                    robots[id]->kicker->setRoller(rolling);
+                    robots[id]->setSpeed(vx, vy, vw, cmd.cmd_vel().use_imu(), id);
+                }else if(cmd.cmd_type() == ZSS::New::Robot_Command_CmdType_CMD_WHEEL){
+                    auto ww = cmd.cmd_wheel();
+                    robots[id]->setSpeed(0,ww.wheel1());
+                    robots[id]->setSpeed(1,ww.wheel2());
+                    robots[id]->setSpeed(2,ww.wheel3());
+                    robots[id]->setSpeed(3,ww.wheel4());
+                }else{
+                    std::cout << "grsim-sslworld.cpp : cmd type currently not supported" << std::endl;
                 }
+                dReal kickx = 0 , kickz = 0;
+                bool kick = false;
+
+                if (cmd.kick_mode() == ZSS::New::Robot_Command_KickMode_KICK){
+                    kick = true;
+                    kickx = cmd.desire_power();
+                    kickz = 0;
+                }else if(cmd.kick_mode() == ZSS::New::Robot_Command_KickMode_CHIP){
+                    kick = true;
+                    // suppose kicker is 45 degree
+                    auto vel = std::sqrt(9.8*cmd.desire_power()/2.0);// length = velx * t = velx * (2*velz/g)
+                    kickx = vel;
+                    kickz = vel;
+                }
+                double noise_ratio = randn_notrig(0.0,cfg->kick_speed_noise());
+                kickx *= 1+noise_ratio;
+                kickz *= 1+noise_ratio;
+                if (kick && ((kickx>0.0001) || (kickz>0.0001)))
+                    robots[id]->kicker->kick(kickx,kickz);
+                int rolling = 0;
+                if (cmd.dribble_spin() > 0.2) rolling = 1;
+                robots[id]->kicker->setRoller(rolling);
             }
-            if (packet.has_replacement())
+        }
+        if (packet.has_replacement())
+        {
+            for (int i=0;i<packet.replacement().robots_size();i++)
             {
-                for (int i=0;i<packet.replacement().robots_size();i++)
-                {
-                    int team = packet.replacement().robots(i).yellowteam() ? 1 : 0;
-                    int k = packet.replacement().robots(i).id();
-                    dReal x = 0, y = 0, dir = 0;
-                    bool turnon = true;
-                    x = packet.replacement().robots(i).x();
-                    y = packet.replacement().robots(i).y();
-                    dir = packet.replacement().robots(i).dir();
-                    turnon = packet.replacement().robots(i).turnon();
-                    int id = robotIndex(k, team);
-                    if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
-                    robots[id]->setXY(x,y);
-                    robots[id]->resetRobot();
-                    robots[id]->setDir(dir);
-                    robots[id]->on = turnon;
-                }
-                if (packet.replacement().has_ball())
-                {
-                    dReal x = 0, y = 0, z = 0, vx = 0, vy = 0;
-                    ball->getBodyPosition(x, y, z);
-                    const auto vel_vec = dBodyGetLinearVel(ball->body);
-                    vx = vel_vec[0];
-                    vy = vel_vec[1];
+                int team = packet.replacement().robots(i).yellowteam() ? 1 : 0;
+                int k = packet.replacement().robots(i).id();
+                dReal x = 0, y = 0, dir = 0;
+                bool turnon = true;
+                x = packet.replacement().robots(i).x();
+                y = packet.replacement().robots(i).y();
+                dir = packet.replacement().robots(i).dir();
+                turnon = packet.replacement().robots(i).turnon();
+                int id = robotIndex(k, team);
+                if ((id < 0) || (id >= cfg->Robots_Count()*2)) continue;
+                robots[id]->setXY(x,y);
+                robots[id]->resetRobot();
+                robots[id]->setDir(dir);
+                robots[id]->on = turnon;
+            }
+            if (packet.replacement().has_ball())
+            {
+                dReal x = 0, y = 0, z = 0, vx = 0, vy = 0;
+                ball->getBodyPosition(x, y, z);
+                const auto vel_vec = dBodyGetLinearVel(ball->body);
+                vx = vel_vec[0];
+                vy = vel_vec[1];
 
-                    x  = packet.replacement().ball().x();
-                    y  = packet.replacement().ball().y();
-                    vx = packet.replacement().ball().vx();
-                    vy = packet.replacement().ball().vy();
+                x  = packet.replacement().ball().x();
+                y  = packet.replacement().ball().y();
+                vx = packet.replacement().ball().vx();
+                vy = packet.replacement().ball().vy();
 
-                    ball->setBodyPosition(x,y,cfg->BallRadius()*1.2);
-                    dBodySetLinearVel(ball->body,vx,vy,0);
-                    dBodySetAngularVel(ball->body,0,0,0);
-                }
+                ball->setBodyPosition(x,y,cfg->BallRadius()*1.2);
+                dBodySetLinearVel(ball->body,vx,vy,0);
+                dBodySetAngularVel(ball->body,0,0,0);
             }
         }
 
         // send robot status
-        for (int team = 0; team < 2; ++team)
+        ZSS::New::Robots_Status robotsPacket;
+        bool updateRobotStatus = false;
+        for (int i = 0; i < this->cfg->Robots_Count(); ++i)
         {
-            ZSS::New::Robots_Status robotsPacket;
-            bool updateRobotStatus = false;
-            for (int i = 0; i < this->cfg->Robots_Count(); ++i)
-            {
-                int id = robotIndex(i, team);
-                bool isInfrared = robots[id]->kicker->isTouchingBall();
-                KickStatus kicking = robots[id]->kicker->isKicking();
-                if (isInfrared != lastInfraredState[team][i] || kicking != lastKickState[team][i])
-                {   
-                    updateRobotStatus = true;
-                    addRobotStatus(robotsPacket, i, team, isInfrared, kicking);
-                    lastInfraredState[team][i] = isInfrared;
-                    lastKickState[team][i] = kicking;
-                }
+            int id = robotIndex(i, team);
+            bool isInfrared = robots[id]->kicker->isTouchingBall();
+            KickStatus kicking = robots[id]->kicker->isKicking();
+            if (isInfrared != lastInfraredState[team][i] || kicking != lastKickState[team][i])
+            {   
+                updateRobotStatus = true;
+                addRobotStatus(robotsPacket, i, team, isInfrared, kicking);
+                lastInfraredState[team][i] = isInfrared;
+                lastKickState[team][i] = kicking;
             }
-            if (updateRobotStatus){
-                sendRobotStatus(robotsPacket, sender, team);
-            }
+        }
+        if (updateRobotStatus){
+            sendRobotStatus(robotsPacket, sender, team);
         }
     }
 }
